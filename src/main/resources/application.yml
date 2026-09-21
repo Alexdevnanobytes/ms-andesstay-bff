@@ -1,0 +1,11 @@
+server:
+  port: ${PORT:8080}
+security:
+  issuer: https://login.microsoftonline.com/${ENTRA_TENANT_ID:SET_TENANT_ID}/v2.0
+  audience: ${ENTRA_API_CLIENT_ID:SET_API_CLIENT_ID}
+  frontend-origin: ${FRONTEND_ORIGIN:http://localhost:4200}
+internal:
+  token: ${INTERNAL_TOKEN:}
+services:
+  reservations: ${RESERVATIONS_URL:http://localhost:8081}
+  catalog: ${CATALOG_URL:http://localhost:8082}
