@@ -16,6 +16,7 @@ services:
     depends_on:
       - reservations
       - catalog
+    restart: on-failure
     networks:
       - andesstay
 
@@ -29,6 +30,9 @@ services:
       RESERVATIONS_DB_PASSWORD: ${RESERVATIONS_DB_PASSWORD}
       CATALOG_URL: http://catalog:8082
       INTERNAL_TOKEN: ${INTERNAL_TOKEN}
+    depends_on:
+      - catalog
+    restart: on-failure
     networks:
       - andesstay
 
@@ -41,6 +45,7 @@ services:
       CATALOG_DB_USER: ${CATALOG_DB_USER}
       CATALOG_DB_PASSWORD: ${CATALOG_DB_PASSWORD}
       INTERNAL_TOKEN: ${INTERNAL_TOKEN}
+    restart: on-failure
     networks:
       - andesstay
 
