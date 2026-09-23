@@ -4,7 +4,7 @@ Responsable: Cristian
 Área: Nube y frontend
 
 ## Trabajo realizado
-- Creación de instancia AWS EC2 con Ubuntu.
+- Creación de instancia AWS EC2 con Ubuntu (el plan indicaba Amazon Linux 2023; usuario SSH: ubuntu).
 - Instalación de Docker y Docker Compose.
 - Configuración de acceso SSH a GitHub.
 - Descarga de los tres microservicios.
@@ -23,7 +23,7 @@ Responsable: Cristian
 - Recibir configuración de Oracle.
 - Recibir identificadores de Microsoft Entra.
 - Completar JWT Authorizer y CORS.
-- Configurar integración privada con EC2.
+- Configurar integración HTTP_PROXY pública al EC2 (el Learner Lab no permite VPC Link).
 - Iniciar servicios y ejecutar pruebas.
 - Desarrollar frontend React.
 
