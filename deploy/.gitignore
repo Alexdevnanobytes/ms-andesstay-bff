@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+
+*.pem
+*.p12
+wallet/
+Wallet_*.zip
+
+ms-andesstay-bff/
+ms-andesstay-catalog/
+ms-andesstay-reservations/
+frontend-andesstay/
+
+.DS_Store

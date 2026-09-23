@@ -1,0 +1,49 @@
+
+services:
+  bff:
+    build:
+      context: ..
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: "8080"
+      ENTRA_TENANT_ID: ${ENTRA_TENANT_ID}
+      ENTRA_API_CLIENT_ID: ${ENTRA_API_CLIENT_ID}
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN}
+      RESERVATIONS_URL: http://reservations:8081
+      CATALOG_URL: http://catalog:8082
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:4200}
+    depends_on:
+      - reservations
+      - catalog
+    networks:
+      - andesstay
+
+  reservations:
+    build:
+      context: ../../ms-andesstay-reservations
+    environment:
+      PORT: "8081"
+      DB_URL: ${DB_URL}
+      RESERVATIONS_DB_USER: ${RESERVATIONS_DB_USER}
+      RESERVATIONS_DB_PASSWORD: ${RESERVATIONS_DB_PASSWORD}
+      CATALOG_URL: http://catalog:8082
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN}
+    networks:
+      - andesstay
+
+  catalog:
+    build:
+      context: ../../ms-andesstay-catalog
+    environment:
+      PORT: "8082"
+      DB_URL: ${DB_URL}
+      CATALOG_DB_USER: ${CATALOG_DB_USER}
+      CATALOG_DB_PASSWORD: ${CATALOG_DB_PASSWORD}
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN}
+    networks:
+      - andesstay
+
+networks:
+  andesstay:
+    driver: bridge
