@@ -70,7 +70,7 @@ public class SecurityConfig {
             .build();
     }
     @Bean
-    CorsConfigurationSource corsSource(@Value("${security.frontend-origin}") String origin) {
+    CorsConfigurationSource corsConfigurationSource(@Value("${security.frontend-origin}") String origin) {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(List.of(origin));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
