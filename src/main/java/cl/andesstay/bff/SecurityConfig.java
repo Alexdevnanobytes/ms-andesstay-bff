@@ -1,7 +1,6 @@
 package cl.andesstay.bff;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -31,26 +30,49 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableMethodSecurity
 public class SecurityConfig {
     @Bean
-    JwtDecoder jwtDecoder(@Value("${security.issuer}") String issuer, @Value("${security.audience}") String audience) {
+    JwtDecoder jwtDecoder(@Value("${security.issuer}") String issuer, @Value("${security.audience}") String audience,
+                          @Value("${security.cognito.region}") String cognitoRegion,
+                          @Value("${security.cognito.user-pool-id}") String cognitoPoolId,
+                          @Value("${security.cognito.client-id}") String cognitoClientId) {
         if (issuer.contains("SET_TENANT_ID") || audience.startsWith("SET_"))
             throw new IllegalStateException("Configure ENTRA_TENANT_ID y ENTRA_API_CLIENT_ID");
         NimbusJwtDecoder decoder = (NimbusJwtDecoder) JwtDecoders.fromIssuerLocation(issuer);
         OAuth2TokenValidator<Jwt> audienceValidator = new JwtClaimValidator<List<String>>("aud", aud -> aud != null && aud.contains(audience));
         OAuth2TokenValidator<Jwt> versionValidator = new JwtClaimValidator<String>("ver", "2.0"::equals);
         decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(JwtValidators.createDefaultWithIssuer(issuer), audienceValidator, versionValidator));
+        if (cognitoPoolId.isBlank() || cognitoClientId.isBlank()) return decoder;
+        String cognitoIssuer = "https://cognito-idp." + cognitoRegion + ".amazonaws.com/" + cognitoPoolId;
+        return byIssuer(cognitoIssuer, cognitoDecoder(cognitoIssuer, cognitoClientId), decoder);
+    }
+    /** Cognito: firma del User Pool, emisor, access token (no id token) y emitido para nuestro app client. */
+    static JwtDecoder cognitoDecoder(String issuer, String clientId) {
+        NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(issuer + "/.well-known/jwks.json").build();
+        decoder.setJwtValidator(cognitoValidator(issuer, clientId));
         return decoder;
+    }
+    static OAuth2TokenValidator<Jwt> cognitoValidator(String issuer, String clientId) {
+        return new DelegatingOAuth2TokenValidator<>(JwtValidators.createDefaultWithIssuer(issuer),
+            new JwtClaimValidator<String>("token_use", "access"::equals),
+            new JwtClaimValidator<String>("client_id", clientId::equals));
+    }
+    /** Elige el validador según el emisor declarado; la firma y el emisor se verifican después en ese validador. */
+    static JwtDecoder byIssuer(String cognitoIssuer, JwtDecoder cognito, JwtDecoder entra) {
+        return token -> cognitoIssuer.equals(declaredIssuer(token)) ? cognito.decode(token) : entra.decode(token);
+    }
+    private static String declaredIssuer(String token) {
+        try {
+            return com.nimbusds.jwt.JWTParser.parse(token).getJWTClaimsSet().getIssuer();
+        } catch (java.text.ParseException e) {
+            return null;
+        }
     }
     @Bean
     JwtAuthenticationConverter jwtConverter() {
         JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
         converter.setJwtGrantedAuthoritiesConverter(jwt -> {
             List<GrantedAuthority> authorities = new ArrayList<>();
-            String scopes = jwt.getClaimAsString("scp");
-            if (scopes != null) Arrays.stream(scopes.split("\\s+")).filter(s -> !s.isBlank())
-                .map(s -> (GrantedAuthority) new SimpleGrantedAuthority("SCOPE_" + s)).forEach(authorities::add);
-            List<String> roles = jwt.getClaimAsStringList("roles");
-            if (roles != null) roles.stream().filter(r -> List.of("ADMIN", "RECEPCIONISTA", "HUESPED").contains(r))
-                .map(r -> (GrantedAuthority) new SimpleGrantedAuthority("ROLE_" + r)).forEach(authorities::add);
+            UserClaims.scopes(jwt).forEach(s -> authorities.add(new SimpleGrantedAuthority("SCOPE_" + s)));
+            UserClaims.roles(jwt).forEach(r -> authorities.add(new SimpleGrantedAuthority("ROLE_" + r)));
             return authorities;
         });
         return converter;

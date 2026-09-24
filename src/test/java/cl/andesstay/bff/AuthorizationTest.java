@@ -3,6 +3,7 @@ package cl.andesstay.bff;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -27,6 +28,22 @@ class AuthorizationTest {
         return jwt().jwt(token -> token.subject("user-1").claim("oid", "user-1")
             .claim("roles", List.of(role)).claim("scp", "access_as_user"))
             .authorities(new SimpleGrantedAuthority("ROLE_" + role), new SimpleGrantedAuthority("SCOPE_access_as_user"));
+    }
+    private RequestPostProcessor cognitoActor(String sub, String group) {
+        return jwt().jwt(token -> token.subject(sub).claim("token_use", "access").claim("username", "user-" + sub)
+            .claim("cognito:groups", List.of(group)).claim("scope", "andesstay-api/access_as_user"))
+            .authorities(new SimpleGrantedAuthority("ROLE_" + group), new SimpleGrantedAuthority("SCOPE_access_as_user"));
+    }
+    @Test void cognitoUserProfileUsesSubUsernameAndGroups() throws Exception {
+        mvc.perform(get("/api/me").with(cognitoActor("c-1", "RECEPCIONISTA"))).andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value("c-1")).andExpect(jsonPath("$.name").value("user-c-1"))
+            .andExpect(jsonPath("$.roles[0]").value("RECEPCIONISTA"));
+    }
+    @Test void cognitoGuestOnlySeesOwnReservation() throws Exception {
+        when(downstream.reservation("r-3")).thenReturn(new Models.Reservation("r-3", "c-guest", "u-1",
+            java.time.LocalDate.parse("2030-01-01"), java.time.LocalDate.parse("2030-01-03"), "CREADA", java.time.Instant.now()));
+        mvc.perform(get("/api/reservations/r-3").with(cognitoActor("c-guest", "HUESPED"))).andExpect(status().isOk());
+        mvc.perform(get("/api/reservations/r-3").with(cognitoActor("c-other", "HUESPED"))).andExpect(status().isForbidden());
     }
     @Test void withoutTokenIsRejected() throws Exception {
         mvc.perform(get("/api/me")).andExpect(status().isUnauthorized());

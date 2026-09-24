@@ -13,6 +13,9 @@ services:
       RESERVATIONS_URL: http://reservations:8081
       CATALOG_URL: http://catalog:8082
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:4200}
+      COGNITO_REGION: ${COGNITO_REGION:-us-east-1}
+      COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID:-}
+      COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID:-}
     depends_on:
       - reservations
       - catalog

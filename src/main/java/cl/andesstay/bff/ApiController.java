@@ -17,13 +17,13 @@ public class ApiController {
     private final Downstream downstream;
     public ApiController(Downstream downstream) { this.downstream = downstream; }
     private String id(Jwt jwt) {
-        String oid = jwt.getClaimAsString("oid");
-        if (oid == null || oid.isBlank()) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Falta identificador de usuario");
-        return oid;
+        String id = UserClaims.id(jwt);
+        if (id == null) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Falta identificador de usuario");
+        return id;
     }
     private boolean staff(Jwt jwt) {
-        List<String> roles = jwt.getClaimAsStringList("roles");
-        return roles != null && (roles.contains("ADMIN") || roles.contains("RECEPCIONISTA"));
+        List<String> roles = UserClaims.roles(jwt);
+        return roles.contains("ADMIN") || roles.contains("RECEPCIONISTA");
     }
     private Models.Reservation allowedReservation(Jwt jwt, String reservationId) {
         Models.Reservation r = downstream.reservation(reservationId);
@@ -33,8 +33,7 @@ public class ApiController {
     }
     @GetMapping("/me")
     public Models.Profile me(@AuthenticationPrincipal Jwt jwt) {
-        List<String> roles = jwt.getClaimAsStringList("roles");
-        return new Models.Profile(id(jwt), jwt.getClaimAsString("name"), roles == null ? List.of() : roles);
+        return new Models.Profile(id(jwt), UserClaims.name(jwt), UserClaims.roles(jwt));
     }
     @GetMapping("/dashboard")
     public Models.Dashboard dashboard(@AuthenticationPrincipal Jwt jwt) {

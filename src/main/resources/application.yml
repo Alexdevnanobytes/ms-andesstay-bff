@@ -4,6 +4,10 @@ security:
   issuer: https://login.microsoftonline.com/${ENTRA_TENANT_ID:SET_TENANT_ID}/v2.0
   audience: ${ENTRA_API_CLIENT_ID:SET_API_CLIENT_ID}
   frontend-origin: ${FRONTEND_ORIGIN:http://localhost:4200}
+  cognito: # opcional: vacío = solo Microsoft Entra ID
+    region: ${COGNITO_REGION:us-east-1}
+    user-pool-id: ${COGNITO_USER_POOL_ID:}
+    client-id: ${COGNITO_CLIENT_ID:}
 internal:
   token: ${INTERNAL_TOKEN:}
 services:
