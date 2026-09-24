@@ -19,7 +19,7 @@ services:
     depends_on:
       - reservations
       - catalog
-    restart: on-failure
+    restart: unless-stopped
     networks:
       - andesstay
 
@@ -35,7 +35,7 @@ services:
       INTERNAL_TOKEN: ${INTERNAL_TOKEN}
     depends_on:
       - catalog
-    restart: on-failure
+    restart: unless-stopped
     networks:
       - andesstay
 
@@ -48,7 +48,7 @@ services:
       CATALOG_DB_USER: ${CATALOG_DB_USER}
       CATALOG_DB_PASSWORD: ${CATALOG_DB_PASSWORD}
       INTERNAL_TOKEN: ${INTERNAL_TOKEN}
-    restart: on-failure
+    restart: unless-stopped
     networks:
       - andesstay
 
