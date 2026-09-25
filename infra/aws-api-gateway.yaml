@@ -1,0 +1,125 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  AndesStay - API Gateway HTTP API como unico punto publico del backend.
+  Refleja lo desplegado en AWS Academy Learner Lab: integracion HTTP_PROXY
+  directa al BFF en EC2 (el laboratorio no permite VPC Link ni ALB interno),
+  un JWT Authorizer por proveedor de identidad y CORS para el frontend.
+
+Parameters:
+  BackendBaseUrl:
+    Type: String
+    Default: http://ec2-52-1-104-247.compute-1.amazonaws.com:8080
+    Description: URL del BFF en el EC2 (IP elastica 52.1.104.247), sin barra final.
+  FrontendOrigin:
+    Type: String
+    Default: http://localhost:4200
+    Description: Origen del frontend React permitido por CORS.
+  EntraTenantId:
+    Type: String
+    Description: Directory (tenant) ID de Microsoft Entra ID.
+  EntraApiClientId:
+    Type: String
+    Description: Application (client) ID de la app registration andesstay-api.
+  CognitoUserPoolId:
+    Type: String
+    Description: ID del User Pool de Amazon Cognito (us-east-1_XXXXXXX).
+  CognitoAppClientId:
+    Type: String
+    Description: ID del app client de Cognito que usa el frontend.
+
+Resources:
+  HttpApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: andesstay-api
+      ProtocolType: HTTP
+      # Con CORS configurado, API Gateway responde el preflight OPTIONS del frontend.
+      CorsConfiguration:
+        AllowOrigins:
+          - !Ref FrontendOrigin
+        AllowHeaders:
+          - authorization
+          - content-type
+        AllowMethods:
+          - GET
+          - POST
+          - PUT
+          - PATCH
+          - DELETE
+          - OPTIONS
+        MaxAge: 300
+
+  # Una sola integracion para ambas rutas: si cambia el EC2, se edita solo aqui.
+  BffIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref HttpApi
+      IntegrationType: HTTP_PROXY
+      IntegrationMethod: ANY
+      IntegrationUri: !Sub '${BackendBaseUrl}/api/{proxy}'
+      PayloadFormatVersion: '1.0'
+      TimeoutInMillis: 30000
+
+  # Microsoft Entra ID: tokens v2 emitidos para la app andesstay-api.
+  EntraAuthorizer:
+    Type: AWS::ApiGatewayV2::Authorizer
+    Properties:
+      ApiId: !Ref HttpApi
+      Name: entra-v2
+      AuthorizerType: JWT
+      IdentitySource:
+        - $request.header.Authorization
+      JwtConfiguration:
+        Issuer: !Sub 'https://login.microsoftonline.com/${EntraTenantId}/v2.0'
+        Audience:
+          - !Ref EntraApiClientId
+
+  # Amazon Cognito: access tokens del User Pool emitidos para el app client.
+  CognitoAuthorizer:
+    Type: AWS::ApiGatewayV2::Authorizer
+    Properties:
+      ApiId: !Ref HttpApi
+      Name: cognito
+      AuthorizerType: JWT
+      IdentitySource:
+        - $request.header.Authorization
+      JwtConfiguration:
+        Issuer: !Sub 'https://cognito-idp.${AWS::Region}.amazonaws.com/${CognitoUserPoolId}'
+        Audience:
+          - !Ref CognitoAppClientId
+
+  # /api/* -> usuarios de Microsoft Entra ID
+  EntraRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: ANY /api/{proxy+}
+      AuthorizationType: JWT
+      AuthorizerId: !Ref EntraAuthorizer
+      AuthorizationScopes:
+        - access_as_user
+      Target: !Sub 'integrations/${BffIntegration}'
+
+  # /cognito/api/* -> usuarios de Amazon Cognito (mismo BFF, mismas rutas internas)
+  CognitoRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: ANY /cognito/api/{proxy+}
+      AuthorizationType: JWT
+      AuthorizerId: !Ref CognitoAuthorizer
+      AuthorizationScopes:
+        - andesstay-api/access_as_user
+      Target: !Sub 'integrations/${BffIntegration}'
+
+  DefaultStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref HttpApi
+      StageName: $default
+      AutoDeploy: true
+
+Outputs:
+  InvokeUrl:
+    Description: URL publica del API (VITE_API_BASE del frontend).
+    Value: !Sub 'https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com'
