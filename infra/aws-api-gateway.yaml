@@ -5,6 +5,7 @@ Description: >
   directa al BFF en EC2 (el laboratorio no permite VPC Link ni ALB interno),
   un JWT Authorizer por proveedor de identidad y CORS para el frontend.
 
+# Parámetros: valores que se entregan al desplegar la plantilla (no hay secretos, son IDs públicos).
 Parameters:
   BackendBaseUrl:
     Type: String
@@ -27,6 +28,8 @@ Parameters:
     Type: String
     Description: ID del app client de Cognito que usa el frontend.
 
+# Recursos: lo que CloudFormation crea en AWS. El orden de una petición es:
+# ruta (Route) -> authorizer JWT (Authorizer) -> integración HTTP_PROXY (Integration) -> BFF en el EC2.
 Resources:
   HttpApi:
     Type: AWS::ApiGatewayV2::Api
@@ -112,6 +115,7 @@ Resources:
         - andesstay-api/access_as_user
       Target: !Sub 'integrations/${BffIntegration}'
 
+  # Etapa $default con implementación automática: cada cambio queda publicado en la URL de invocación.
   DefaultStage:
     Type: AWS::ApiGatewayV2::Stage
     Properties:
@@ -119,6 +123,7 @@ Resources:
       StageName: $default
       AutoDeploy: true
 
+# Salida: la URL pública del API, que se usa como VITE_API_BASE en el frontend.
 Outputs:
   InvokeUrl:
     Description: URL publica del API (VITE_API_BASE del frontend).

@@ -1,15 +1,24 @@
+<!-- pom.xml: archivo de Maven. Define el proyecto, sus dependencias y cómo se compila. -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>cl.andesstay</groupId><artifactId>ms-andesstay-bff</artifactId><version>1.0.0</version>
+  <!-- Hereda la configuración y las versiones compatibles de Spring Boot 3.4.5. -->
   <parent><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-parent</artifactId><version>3.4.5</version><relativePath/></parent>
+  <!-- Versión de Java con la que se compila. -->
   <properties><java.version>17</java.version></properties>
   <dependencies>
+    <!-- spring-boot-starter-web: servidor web (Tomcat) y controladores REST. -->
     <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-web</artifactId></dependency>
+    <!-- spring-boot-starter-security: Spring Security (filtros, reglas de acceso, @PreAuthorize). -->
     <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-security</artifactId></dependency>
+    <!-- oauth2-resource-server: validación de JWT (firma con JWKS, emisor, vigencia). -->
     <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-oauth2-resource-server</artifactId></dependency>
+    <!-- validation: anotaciones como @NotBlank y @NotNull, que se revisan con @Valid. -->
     <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-validation</artifactId></dependency>
+    <!-- Dependencias solo para pruebas (JUnit, MockMvc, Mockito y utilidades de seguridad para tests). -->
     <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-test</artifactId><scope>test</scope></dependency>
     <dependency><groupId>org.springframework.security</groupId><artifactId>spring-security-test</artifactId><scope>test</scope></dependency>
   </dependencies>
+  <!-- Plugin que empaqueta la aplicación como un .jar ejecutable (java -jar). -->
   <build><plugins><plugin><groupId>org.springframework.boot</groupId><artifactId>spring-boot-maven-plugin</artifactId></plugin></plugins></build>
 </project>

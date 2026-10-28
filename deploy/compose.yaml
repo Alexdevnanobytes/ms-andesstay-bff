@@ -1,8 +1,8 @@
 
+# Docker Compose del backend: levanta los 3 servicios en el EC2.
+# Las ${VARIABLES} salen del archivo .env que está junto a este archivo (nunca se sube a GitHub).
+# ${VAR:-valor} usa "valor" si la variable no existe.
 services:
-  bff:
-    build:
-      context: ..
   # Dos nodos RabbitMQ en la red privada de Docker. No publican AMQP ni Management UI al host.
   rabbitmq1:
     image: rabbitmq:4.2-management
@@ -48,6 +48,11 @@ services:
       - andesstay
 
   # BFF: el único servicio con puerto publicado hacia afuera (8080).
+  bff:
+    build:
+      # Construye la imagen con el Dockerfile de la raíz de ms-andesstay-bff.
+      context: ..
+    # Publica el puerto 8080 del contenedor en el 8080 del EC2 (al que llega el API Gateway).
     ports:
       - "8080:8080"
     environment:
@@ -55,35 +60,51 @@ services:
       ENTRA_TENANT_ID: ${ENTRA_TENANT_ID}
       ENTRA_API_CLIENT_ID: ${ENTRA_API_CLIENT_ID}
       INTERNAL_TOKEN: ${INTERNAL_TOKEN}
+      # Dentro de la red de Docker cada servicio se alcanza por su nombre (reservations, catalog).
       RESERVATIONS_URL: http://reservations:8081
       CATALOG_URL: http://catalog:8082
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:4200}
       COGNITO_REGION: ${COGNITO_REGION:-us-east-1}
       COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID:-}
       COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID:-}
+    # Orden de arranque: primero los microservicios, después el BFF.
     depends_on:
       - reservations
       - catalog
+    # unless-stopped: si el contenedor falla o el EC2 se reinicia, Docker lo vuelve a levantar solo.
     restart: unless-stopped
+    # Red interna compartida por los tres servicios.
     networks:
       - andesstay
 
+  # Microservicio de reservas: sin "ports", así que NO es accesible desde fuera del EC2.
   reservations:
     build:
+      # Usa el Dockerfile del repositorio ms-andesstay-reservations (clonado al lado de este).
       context: ../../ms-andesstay-reservations
     environment:
       PORT: "8081"
+      # Conexión a PostgreSQL en AWS RDS.
       DB_URL: ${DB_URL}
       RESERVATIONS_DB_USER: ${RESERVATIONS_DB_USER}
       RESERVATIONS_DB_PASSWORD: ${RESERVATIONS_DB_PASSWORD}
+      # reservations llama a catalog para asignar y liberar unidades.
       CATALOG_URL: http://catalog:8082
       INTERNAL_TOKEN: ${INTERNAL_TOKEN}
+      RABBITMQ_HOST: rabbitmq1
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_USER: ${RABBITMQ_USER:-andesstay}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}
+      RABBITMQ_MANAGEMENT_URL: http://rabbitmq1:15672
     depends_on:
       - catalog
+      - rabbitmq1
+      - rabbitmq2
     restart: unless-stopped
     networks:
       - andesstay
 
+  # Microservicio de catálogo: tampoco publica puertos.
   catalog:
     build:
       context: ../../ms-andesstay-catalog
@@ -91,19 +112,13 @@ services:
       PORT: "8082"
       DB_URL: ${DB_URL}
       CATALOG_DB_USER: ${CATALOG_DB_USER}
-      RABBITMQ_HOST: rabbitmq1
-      RABBITMQ_PORT: "5672"
-      RABBITMQ_USER: ${RABBITMQ_USER:-andesstay}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}
-      RABBITMQ_MANAGEMENT_URL: http://rabbitmq1:15672
       CATALOG_DB_PASSWORD: ${CATALOG_DB_PASSWORD}
       INTERNAL_TOKEN: ${INTERNAL_TOKEN}
-      - rabbitmq1
-      - rabbitmq2
     restart: unless-stopped
     networks:
       - andesstay
 
+# Red tipo bridge: una red privada de Docker dentro del EC2.
 networks:
   andesstay:
     driver: bridge

@@ -1,15 +1,26 @@
+# Configuración del BFF. La sintaxis ${VARIABLE:valor} significa: usar la variable de entorno
+# VARIABLE y, si no existe, usar el valor que va después de los dos puntos.
+# Así los secretos y los IDs nunca quedan escritos en el código: se entregan con el archivo .env.
 server:
+  # Puerto HTTP del BFF (el único publicado por Docker).
   port: ${PORT:8080}
+# Datos para validar los JWT (los usa SecurityConfig).
 security:
+  # Emisor esperado de los tokens de Microsoft Entra ID (versión 2.0), armado con el ID del tenant.
   issuer: https://login.microsoftonline.com/${ENTRA_TENANT_ID:SET_TENANT_ID}/v2.0
+  # Audiencia: client ID de la app registration andesstay-api.
   audience: ${ENTRA_API_CLIENT_ID:SET_API_CLIENT_ID}
+  # Único origen al que el navegador puede llamar (CORS): el frontend React.
   frontend-origin: ${FRONTEND_ORIGIN:http://localhost:4200}
+  # Amazon Cognito. Si user-pool-id o client-id quedan vacíos, el BFF acepta solo tokens de Entra ID.
   cognito: # opcional: vacío = solo Microsoft Entra ID
     region: ${COGNITO_REGION:us-east-1}
     user-pool-id: ${COGNITO_USER_POOL_ID:}
     client-id: ${COGNITO_CLIENT_ID:}
+# Token compartido con los microservicios (header X-Internal-Token). Es obligatorio.
 internal:
   token: ${INTERNAL_TOKEN:}
+# Direcciones de los microservicios. En local son localhost; en Docker Compose, los nombres de servicio.
 services:
   reservations: ${RESERVATIONS_URL:http://localhost:8081}
   catalog: ${CATALOG_URL:http://localhost:8082}
