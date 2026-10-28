@@ -73,4 +73,16 @@ class AuthorizationTest {
             .andExpect(status().isCreated());
         verify(downstream).createUnit(any());
     }
+
+    @Test void onlyAdminCanReadRabbitManagementResources() throws Exception {
+        when(downstream.rabbitResources("queues")).thenReturn(List.of());
+        mvc.perform(get("/api/rabbit/queues").with(actor("ADMIN"))).andExpect(status().isOk());
+        mvc.perform(get("/api/rabbit/queues").with(actor("RECEPCIONISTA"))).andExpect(status().isForbidden());
+        verify(downstream, times(1)).rabbitResources("queues");
+    }
+
+    @Test void rabbitManagementPayloadIsValidatedBeforeForwarding() throws Exception {
+        mvc.perform(post("/api/rabbit/exchanges").with(actor("ADMIN")).contentType("application/json")
+            .content("{\"name\":\"bad exchange\",\"type\":\"fanout\"}"))
+            .andExpect(status().isBadRequest());
 }

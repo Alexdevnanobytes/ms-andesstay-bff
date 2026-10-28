@@ -88,4 +88,29 @@ public class ApiController {
     public Models.Unit updateUnit(@PathVariable String id, @Valid @RequestBody Models.UnitRequest data) { return downstream.updateUnit(id, data); }
     @DeleteMapping("/catalog/units/{id}") @ResponseStatus(HttpStatus.NO_CONTENT) @PreAuthorize("hasRole('ADMIN')")
     public void deleteUnit(@PathVariable String id) { downstream.deleteUnit(id); }
+
+    // RabbitMQ admin endpoints are available only to ADMIN; the downstream service also
+    // requires X-Internal-Token and is not published outside the Docker network.
+    @GetMapping("/rabbit/queues") @PreAuthorize("hasRole('ADMIN')")
+    public List<Map<String, Object>> rabbitQueues() { return downstream.rabbitResources("queues"); }
+    @PostMapping("/rabbit/queues") @ResponseStatus(HttpStatus.CREATED) @PreAuthorize("hasRole('ADMIN')")
+    public void createRabbitQueue(@Valid @RequestBody Models.RabbitQueueRequest data) { downstream.createRabbitQueue(data); }
+    @DeleteMapping("/rabbit/queues/{name}") @ResponseStatus(HttpStatus.NO_CONTENT) @PreAuthorize("hasRole('ADMIN')")
+    public void deleteRabbitQueue(@PathVariable String name) { downstream.deleteRabbitQueue(name); }
+
+    @GetMapping("/rabbit/exchanges") @PreAuthorize("hasRole('ADMIN')")
+    public List<Map<String, Object>> rabbitExchanges() { return downstream.rabbitResources("exchanges"); }
+    @PostMapping("/rabbit/exchanges") @ResponseStatus(HttpStatus.CREATED) @PreAuthorize("hasRole('ADMIN')")
+    public void createRabbitExchange(@Valid @RequestBody Models.RabbitExchangeRequest data) { downstream.createRabbitExchange(data); }
+    @DeleteMapping("/rabbit/exchanges/{name}") @ResponseStatus(HttpStatus.NO_CONTENT) @PreAuthorize("hasRole('ADMIN')")
+    public void deleteRabbitExchange(@PathVariable String name) { downstream.deleteRabbitExchange(name); }
+
+    @GetMapping("/rabbit/bindings") @PreAuthorize("hasRole('ADMIN')")
+    public List<Map<String, Object>> rabbitBindings() { return downstream.rabbitResources("bindings"); }
+    @PostMapping("/rabbit/bindings") @ResponseStatus(HttpStatus.CREATED) @PreAuthorize("hasRole('ADMIN')")
+    public void createRabbitBinding(@Valid @RequestBody Models.RabbitBindingRequest data) { downstream.createRabbitBinding(data); }
+    @DeleteMapping("/rabbit/bindings") @ResponseStatus(HttpStatus.NO_CONTENT) @PreAuthorize("hasRole('ADMIN')")
+    public void deleteRabbitBinding(@RequestParam String queue, @RequestParam String exchange, @RequestParam String routingKey) {
+        downstream.deleteRabbitBinding(queue, exchange, routingKey);
+    }
 }

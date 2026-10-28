@@ -56,6 +56,32 @@ public class Downstream {
     public Models.Unit createUnit(Models.UnitRequest data) { return call(() -> catalog.post().uri("/api/catalog/units").body(data).retrieve().body(Models.Unit.class)); }
     public Models.Unit updateUnit(String id, Models.UnitRequest data) { return call(() -> catalog.put().uri("/api/catalog/units/{id}", id).body(data).retrieve().body(Models.Unit.class)); }
     public void deleteUnit(String id) { call(() -> catalog.delete().uri("/api/catalog/units/{id}", id).retrieve().toBodilessEntity()); }
+    public List<Map<String, Object>> rabbitResources(String resource) {
+        return call(() -> {
+            List<Map<String, Object>> body = reservations.get().uri("/api/rabbit/{resource}", resource)
+                .retrieve().body(new org.springframework.core.ParameterizedTypeReference<>() { });
+            return body == null ? List.of() : body;
+        });
+    }
+    public void createRabbitQueue(Models.RabbitQueueRequest data) {
+        call(() -> reservations.post().uri("/api/rabbit/queues").body(data).retrieve().toBodilessEntity());
+    }
+    public void deleteRabbitQueue(String name) {
+        call(() -> reservations.delete().uri("/api/rabbit/queues/{name}", name).retrieve().toBodilessEntity());
+    }
+    public void createRabbitExchange(Models.RabbitExchangeRequest data) {
+        call(() -> reservations.post().uri("/api/rabbit/exchanges").body(data).retrieve().toBodilessEntity());
+    }
+    public void deleteRabbitExchange(String name) {
+        call(() -> reservations.delete().uri("/api/rabbit/exchanges/{name}", name).retrieve().toBodilessEntity());
+    }
+    public void createRabbitBinding(Models.RabbitBindingRequest data) {
+        call(() -> reservations.post().uri("/api/rabbit/bindings").body(data).retrieve().toBodilessEntity());
+    }
+    public void deleteRabbitBinding(String queue, String exchange, String routingKey) {
+        call(() -> reservations.delete().uri(uri -> uri.path("/api/rabbit/bindings")
+            .queryParam("queue", queue).queryParam("exchange", exchange).queryParam("routingKey", routingKey).build())
+            .retrieve().toBodilessEntity());
     public Map<String, Boolean> availability(String id, LocalDate from, LocalDate to) {
         return call(() -> catalog.get().uri(uri -> uri.path("/api/catalog/units/{id}/availability")
             .queryParam("from", from).queryParam("to", to).build(id)).retrieve().body(new org.springframework.core.ParameterizedTypeReference<>() { }));

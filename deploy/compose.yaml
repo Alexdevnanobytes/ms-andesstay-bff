@@ -3,6 +3,51 @@ services:
   bff:
     build:
       context: ..
+  # Dos nodos RabbitMQ en la red privada de Docker. No publican AMQP ni Management UI al host.
+  rabbitmq1:
+    image: rabbitmq:4.2-management
+    hostname: rabbitmq1
+    environment:
+      RABBITMQ_NODENAME: rabbit@rabbitmq1
+      RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE:?Set RABBITMQ_ERLANG_COOKIE in .env}
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-andesstay}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}
+    volumes:
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - rabbitmq1-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+    networks:
+      - andesstay
+
+  rabbitmq2:
+    image: rabbitmq:4.2-management
+    hostname: rabbitmq2
+    environment:
+      RABBITMQ_NODENAME: rabbit@rabbitmq2
+      RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE:?Set RABBITMQ_ERLANG_COOKIE in .env}
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-andesstay}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}
+    volumes:
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - rabbitmq2-data:/var/lib/rabbitmq
+    depends_on:
+      rabbitmq1:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+    networks:
+      - andesstay
+
+  # BFF: el único servicio con puerto publicado hacia afuera (8080).
     ports:
       - "8080:8080"
     environment:
@@ -46,8 +91,15 @@ services:
       PORT: "8082"
       DB_URL: ${DB_URL}
       CATALOG_DB_USER: ${CATALOG_DB_USER}
+      RABBITMQ_HOST: rabbitmq1
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_USER: ${RABBITMQ_USER:-andesstay}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}
+      RABBITMQ_MANAGEMENT_URL: http://rabbitmq1:15672
       CATALOG_DB_PASSWORD: ${CATALOG_DB_PASSWORD}
       INTERNAL_TOKEN: ${INTERNAL_TOKEN}
+      - rabbitmq1
+      - rabbitmq2
     restart: unless-stopped
     networks:
       - andesstay
@@ -55,3 +107,7 @@ services:
 networks:
   andesstay:
     driver: bridge
+
+volumes:
+  rabbitmq1-data:
+  rabbitmq2-data:
