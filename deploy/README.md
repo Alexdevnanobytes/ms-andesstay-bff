@@ -20,7 +20,7 @@ Responsable: Cristian
 - Catálogo: puerto 8082.
 
 ## Pendiente
-- Recibir configuración de Oracle.
+- Recibir configuración de PostgreSQL (AWS RDS).
 - Recibir identificadores de Microsoft Entra.
 - Completar JWT Authorizer y CORS.
 - Configurar integración HTTP_PROXY pública al EC2 (el Learner Lab no permite VPC Link).
